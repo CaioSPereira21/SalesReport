@@ -53,30 +53,75 @@ marcaSelect.addEventListener('change', () => {
     }
 });
 
-function atualizarGrafico(nomeMarca, dadosVendas) {
-    const ctx = document.getElementById('grafico').getContext('2d');
-    const meses = ['Jan', 'Fev', 'Mar', 'Abr'];
+function atualizarGrafico() {
+    let dados = [];
 
-    if (chart) chart.destroy();
+    const categoriaSelecionada = selectCategoria.value;
+    const produtoSelecionado = selectProduto.value;
+    const marcaSelecionada = selectMarca.value;
 
-    chart = new Chart(ctx, {
-        type: 'bar',
+    if (!categoriaSelecionada && !produtoSelecionado && !marcaSelecionada) {
+        // Nenhum filtro: mostra todas as marcas
+        dadosJSON.categorias.forEach(categoria => {
+            categoria.produtos.forEach(produto => {
+                produto.marcas.forEach(marca => {
+                    dados.push({
+                        nome: `${marca.nome} (${produto.nome})`,
+                        vendas: marca.vendas
+                    });
+                });
+            });
+        });
+    } else {
+        // Filtros aplicados
+        const categoria = dadosJSON.categorias.find(c => c.nome === categoriaSelecionada);
+        if (!categoria) return;
+
+        const produtosFiltrados = produtoSelecionado
+            ? categoria.produtos.filter(p => p.nome === produtoSelecionado)
+            : categoria.produtos;
+
+        produtosFiltrados.forEach(produto => {
+            const marcasFiltradas = marcaSelecionada
+                ? produto.marcas.filter(m => m.nome === marcaSelecionada)
+                : produto.marcas;
+
+            marcasFiltradas.forEach(marca => {
+                dados.push({
+                    nome: marca.nome,
+                    vendas: marca.vendas
+                });
+            });
+        });
+    }
+
+    // Atualiza o gráfico
+    const labels = ["Jan", "Fev", "Mar", "Abr"];
+    const datasets = dados.map(m => ({
+        label: m.nome,
+        data: m.vendas,
+        fill: false,
+        borderColor: gerarCor(),
+        tension: 0.1
+    }));
+
+    if (grafico) {
+        grafico.destroy();
+    }
+
+    grafico = new Chart(ctx, {
+        type: 'line',
         data: {
-            labels: meses,
-            datasets: [{
-                label: `Vendas - ${nomeMarca}`,
-                data: dadosVendas,
-                backgroundColor: 'rgba(54, 162, 235, 0.6)'
-            }]
+            labels,
+            datasets
         },
         options: {
             responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
+            plugins: {
+                legend: { position: 'top' },
+                title: {
+                    display: true,
+                    text: 'Vendas por Marca'
                 }
             }
         }
